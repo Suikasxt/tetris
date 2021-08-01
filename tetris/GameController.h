@@ -2,7 +2,13 @@
 #include <vector>
 #include <string>
 
-const int MAX_NUMBER = 10000;
+extern int type_list[];
+struct Action {
+	int r;
+	int x;
+	int y;
+	Action(int _r = -1, int _x = -1, int _y = -1) :r(_r), x(_x), y(_y) {};
+};
 class GameController
 {
 public:
@@ -19,17 +25,15 @@ public:
 	bool is_valid_[4][Width][Height];
 	bool can_arrive_[4][Width][Height];
 	int from_[4][Width][Height];
-	int type_list_[MAX_NUMBER];
 	int number_;
 	int score_;
 	bool game_over_;
-	std::vector<std::string> act_list_;
 
 	void Restart();
 	void CalcData();
-	bool HasBlock(int x, int y);
-	bool CanStay(int r, int px, int py);
-	void Step(int rotation, int px, int py);
+	bool HasBlock(int x, int y) const;
+	bool CanStay(Action) const;
+	std::vector<std::string> Step(Action);
 	void DebugOutput();
 
 	const int Shapes[7][4][4][2] = {
