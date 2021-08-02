@@ -169,7 +169,7 @@ ActionValue Search(const GameController& game, int deepth, int width) {
 double MCSimulation(GameController& game, int deepth) {
     double value = game.score_;
     for (int i = 0; i < deepth && !game.game_over_; i++) {
-        Action act = Greedy(game, 0.01).a;
+        Action act = Greedy(game, 100).a;
         //Action act = Search(game, 4, 4).a;
         game.Step(act);
         game.CalcData();
@@ -196,14 +196,14 @@ ActionValue MCSearch(const GameController& game) {
     std::sort(action_list.begin(), action_list.end());
     ActionValue res;
     for (int i = 0; i < 10 && i < action_list.size(); i++) {
-        double total_value = 0;
+        double total_value = -1e9;
         int index = action_list.size() - 1 - i;
         Action act = action_list[index].a;
-        for (int j = 0; j < 1000; j++) {
+        for (int j = 0; j < 100; j++) {
             GameController tmp_game(game);
             tmp_game.Step(act);
             tmp_game.CalcData();
-            total_value += MCSimulation(tmp_game, 30);
+            total_value = max(total_value, MCSimulation(tmp_game, 30));
         }
         if (res.v < total_value) {
             res = ActionValue(act, total_value);
