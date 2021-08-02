@@ -83,30 +83,32 @@ double Mavis(const GameController& game) {
         height_value += cost;
         if (max < y) max = y;
     }
-    int blocksNumber = 0;
+    int blocks_number = 0;
     for (int x = 0; x < game.Width; x++) {
         for (int y = 0; y < game.Height; y++) {
-            blocksNumber += game.has_blocks_[x][y];
+            blocks_number += game.has_blocks_[x][y];
         }
     }
     double BoardTransitions = GetBoardTransitions(game), BuriedHoles = GetBoardBuriedHoles(game), Wells = GetBoardWells(game);
 
-    res = sqrt(height_value) / 2 + 2.7 * max + 2 * BoardTransitions + 8 * BuriedHoles + Wells;
-    if (blocksNumber < 120) {
-        res -= blocksNumber * 10.;
-    }
+    res = sqrt(height_value) / 3 + 2.7 * max + 2 * BoardTransitions + 300 * BuriedHoles;
+    res -= min(blocks_number, 180) * 15.;
 
     return res;
 }
 double Evaluate(const GameController& game) {
-    double res = game.score_;
+    double res = game.score_ * 1.;
+    res += game.pop_count_[4] * 800.;
+    res += game.pop_count_[3] * 100.;
+    res -= game.pop_count_[2] * 0.;
+    res -= game.pop_count_[1] * 50.;
     res -= Mavis(game);
     if (game.game_over_) {
-        res -= 1e6;
+        res -= 1e7;
     }
     return res;
 }
-ActionValue Greedy(const GameController& game) {
+ActionValue Greedy(const GameController& game, double random_range = 0) {
     ActionValue res;
     int type = type_list[game.number_];
     for (int r = 0; r < game.RotationNumber[type]; r++) {
@@ -116,6 +118,7 @@ ActionValue Greedy(const GameController& game) {
                     GameController tmp_game(game);
                     tmp_game.Step(Action(r, j, i));
                     double value = Evaluate(tmp_game);
+                    value += random_range * rand() / RAND_MAX;
                     if (value > res.v) {
                         res = ActionValue(Action(r, j, i), value);
                     }
@@ -125,7 +128,7 @@ ActionValue Greedy(const GameController& game) {
     }
     return res;
 }
-ActionValue Search(const GameController& game, int deepth) {
+ActionValue Search(const GameController& game, int deepth, int width) {
     if (deepth == 0 || game.game_over_) {
         return ActionValue(Action(), Evaluate(game));
     }
@@ -148,13 +151,13 @@ ActionValue Search(const GameController& game, int deepth) {
         return action_list[action_list.size() - 1];
     }
     ActionValue res;
-    for (int i = 0; i < 3 && i < action_list.size(); i++) {
+    for (int i = 0; i < width && i < action_list.size(); i++) {
         int index = action_list.size() - 1 - i;
         GameController tmp_game(game);
         Action act = action_list[index].a;
         tmp_game.Step(act);
         tmp_game.CalcData();
-        ActionValue av = Search(tmp_game, deepth - 1);
+        ActionValue av = Search(tmp_game, deepth - 1, width);
         av.a = act;
         if (res < av) {
             res = av;
@@ -162,19 +165,65 @@ ActionValue Search(const GameController& game, int deepth) {
     }
     return res;
 }
+double MCSimulation(GameController& game, int deepth) {
+    double value = game.score_;
+    for (int i = 0; i < deepth && !game.game_over_; i++) {
+        //Action act = Greedy(game, 0).a;
+        Action act = Search(game, 3, 5).a;
+        game.Step(act);
+        game.CalcData();
+    }
+    value += game.score_ * 2;
+    return value;
+}
+ActionValue MCSearch(const GameController& game) {
+    std::vector<ActionValue> action_list;
+    int type = type_list[game.number_];
+    for (int r = 0; r < game.RotationNumber[type]; r++) {
+        for (int i = 0; i < game.Height; i++) {
+            for (int j = 0; j < game.Width; j++) {
+                if (game.CanStay(Action(r, j, i))) {
+                    GameController tmp_game(game);
+                    tmp_game.Step(Action(r, j, i));
+                    double value = Evaluate(tmp_game);
+                    action_list.push_back(ActionValue(Action(r, j, i), value));
+                }
+            }
+        }
+    }
+    std::sort(action_list.begin(), action_list.end());
+    ActionValue res;
+    for (int i = 0; i < 10 && i < action_list.size(); i++) {
+        double total_value = 0;
+        int index = action_list.size() - 1 - i;
+        Action act = action_list[index].a;
+        for (int j = 0; j < 1; j++) {
+            GameController tmp_game(game);
+            tmp_game.Step(act);
+            tmp_game.CalcData();
+            total_value += MCSimulation(tmp_game, 30);
+        }
+        if (res.v < total_value) {
+            res = ActionValue(act, total_value);
+        }
+    }
+    return res;
+}
 int main()
 {
+    srand(time(0));
     GameController game;
     game.Restart();
     std::vector<std::string> act_list;
-    while (!game.game_over_ && game.number_ < 10000) {
+    while (!game.game_over_ && game.number_ < 1000) {
         game.CalcData();
         if (game.game_over_) {
             break;
         }
         //Action act = Greedy(game).a;
-        Action act = Search(game, 4).a;
-        std::vector<std::string> act_list_tmp = game.Step(act);
+        //Action act = Search(game, 4, 3).a;
+        Action act = MCSearch(game).a;
+        std::vector<std::string> act_list_tmp = game.Step(act, false);
         act_list.push_back("N");
         for (int i = act_list_tmp.size() - 1; i >= 0;) {
             int Count = 1;
@@ -185,8 +234,8 @@ int main()
             }
             act_list.push_back(act_list_tmp[i + 1] + std::to_string(Count));
         }
-        printf("%d %d\n", game.number_, game.score_);
-        if (game.number_ % 30 == 0) {
+        printf("%d %d %lf\n", game.number_, game.score_, 1.*game.score_ * 10000 / game.number_);
+        if (game.number_ % 1 == 0) {
             game.DebugOutput();
         }
     }

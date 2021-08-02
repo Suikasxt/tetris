@@ -8,6 +8,7 @@ int type_list[MAX_NUMBER];
 void GameController::Restart()
 {
 	std::memset(has_blocks_, 0, sizeof(has_blocks_));
+	std::memset(pop_count_, 0, sizeof(pop_count_));
 	int random_number = v;
 	for (int i = 0; i < MAX_NUMBER; i++) {
 		random_number = (random_number * a + C) % M;
@@ -117,13 +118,13 @@ bool GameController::CanStay(Action act) const
 	return true;
 }
 
-std::vector<std::string> GameController::Step(Action act)
+std::vector<std::string> GameController::Step(Action act, bool is_simulation)
 {
 	std::vector<std::string> act_list;
 	if (game_over_) {
 		return act_list;
 	}
-	if (!CanStay(act)) {
+	if (!can_arrive_[act.r][act.x][act.y]) {
 		return act_list;
 	}
 	int type = type_list[number_];
@@ -135,19 +136,21 @@ std::vector<std::string> GameController::Step(Action act)
 		if (act.y + Shapes[type][act.r][k][1] >= 0) {
 			has_blocks_[act.x + Shapes[type][act.r][k][0]][act.y + Shapes[type][act.r][k][1]] = true;
 		}
-		else {
+		if (act.y + Shapes[type][act.r][k][1] <= 0) {
 			game_over_ = true;
 		}
 	}
-	int rotation = act.r;
-	int px = act.x;
-	int py = act.y;
-	while (from_[rotation][px][py] != -1) {
-		int dir_index = from_[rotation][px][py];
-		act_list.push_back(dir_string[dir_index]);
-		rotation = (rotation - dir[dir_index][0] + 4) & 3;
-		px -= dir[dir_index][1];
-		py -= dir[dir_index][2];
+	if (!is_simulation) {
+		int rotation = act.r;
+		int px = act.x;
+		int py = act.y;
+		while (from_[rotation][px][py] != -1) {
+			int dir_index = from_[rotation][px][py];
+			act_list.push_back(dir_string[dir_index]);
+			rotation = (rotation - dir[dir_index][0] + 4) & 3;
+			px -= dir[dir_index][1];
+			py -= dir[dir_index][2];
+		}
 	}
 
 	int pop_number = 0, block_number = 0;
@@ -156,12 +159,13 @@ std::vector<std::string> GameController::Step(Action act)
 			block_number += has_blocks_[j][i];
 		}
 	}
-	for (int i = Height - 1; i >= 0; i--) {
+	for (int i = Height - 1; i >= 0;) {
 		bool full = true;
 		for (int j = 0; j < Width && full; j++) {
 			full &= has_blocks_[j][i];
 		}
 		if (!full) {
+			i--;
 			continue;
 		}
 		pop_number++;
@@ -191,6 +195,8 @@ std::vector<std::string> GameController::Step(Action act)
 	default:
 		break;
 	}
+
+	pop_count_[pop_number]++;
 	return act_list;
 }
 

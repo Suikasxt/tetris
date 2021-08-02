@@ -25,6 +25,7 @@ public:
 	bool is_valid_[4][Width][Height];
 	bool can_arrive_[4][Width][Height];
 	int from_[4][Width][Height];
+	int pop_count_[5];
 	int number_;
 	int score_;
 	bool game_over_;
@@ -33,7 +34,7 @@ public:
 	void CalcData();
 	bool HasBlock(int x, int y) const;
 	bool CanStay(Action) const;
-	std::vector<std::string> Step(Action);
+	std::vector<std::string> Step(Action act, bool is_simulation = true);
 	void DebugOutput();
 
 	const int Shapes[7][4][4][2] = {
