@@ -68,9 +68,10 @@ double GetBoardWells(const GameController& game) {
     return res;
 }
 double Mavis(const GameController& game) {
-    double height_value = 0;
-    int max = 0;
     double res = 0;
+    int max = 0;
+    double height_value = 0;
+    
     for (int x = 0; x < game.Width; x++) {
         int y = 0;
         for (; y < game.Height; y++) {
@@ -91,7 +92,7 @@ double Mavis(const GameController& game) {
     }
     double BoardTransitions = GetBoardTransitions(game), BuriedHoles = GetBoardBuriedHoles(game), Wells = GetBoardWells(game);
 
-    res = sqrt(height_value) / 3 + 2.7 * max + 2 * BoardTransitions + 300 * BuriedHoles;
+    res = sqrt(height_value) / 3000 + 5.7 * max + 2 * BoardTransitions + 300 * BuriedHoles;
     res -= min(blocks_number, 180) * 15.;
 
     return res;
@@ -168,12 +169,13 @@ ActionValue Search(const GameController& game, int deepth, int width) {
 double MCSimulation(GameController& game, int deepth) {
     double value = game.score_;
     for (int i = 0; i < deepth && !game.game_over_; i++) {
-        //Action act = Greedy(game, 0).a;
-        Action act = Search(game, 3, 5).a;
+        Action act = Greedy(game, 0.01).a;
+        //Action act = Search(game, 4, 4).a;
         game.Step(act);
         game.CalcData();
+        value = value * 0.8 + game.score_;
     }
-    value += game.score_ * 2;
+    //value += game.score_ * 2.5;
     return value;
 }
 ActionValue MCSearch(const GameController& game) {
@@ -197,7 +199,7 @@ ActionValue MCSearch(const GameController& game) {
         double total_value = 0;
         int index = action_list.size() - 1 - i;
         Action act = action_list[index].a;
-        for (int j = 0; j < 1; j++) {
+        for (int j = 0; j < 1000; j++) {
             GameController tmp_game(game);
             tmp_game.Step(act);
             tmp_game.CalcData();
@@ -236,7 +238,7 @@ int main()
         }
         printf("%d %d %lf\n", game.number_, game.score_, 1.*game.score_ * 10000 / game.number_);
         if (game.number_ % 1 == 0) {
-            game.DebugOutput();
+            //game.DebugOutput();
         }
     }
     std::cout << "game.pause();game.playRecord('";
