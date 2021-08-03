@@ -166,11 +166,19 @@ ActionValue Search(const GameController& game, int deepth, int width) {
     }
     return res;
 }
-double MCSimulation(GameController& game, int deepth) {
+ActionValue MCSearch(const GameController& game, int deepth, bool out = false);
+double MCSimulation(GameController& game, int width, int deepth) {
     double value = game.score_;
-    for (int i = 0; i < deepth && !game.game_over_; i++) {
-        Action act = Greedy(game, 100).a;
-        //Action act = Search(game, 4, 4).a;
+    for (int i = 0; i < width && !game.game_over_; i++) {
+
+        Action act;
+        if (deepth == 0) {
+            //act = Greedy(game, 0).a;
+            act = Search(game, 3, 5).a;
+        }
+        else {
+            act = MCSearch(game, deepth - 1).a;
+        }
         game.Step(act);
         game.CalcData();
         value = value * 0.8 + game.score_;
@@ -178,7 +186,7 @@ double MCSimulation(GameController& game, int deepth) {
     //value += game.score_ * 2.5;
     return value;
 }
-ActionValue MCSearch(const GameController& game) {
+ActionValue MCSearch(const GameController& game, int deepth, bool out) {
     std::vector<ActionValue> action_list;
     int type = type_list[game.number_];
     for (int r = 0; r < game.RotationNumber[type]; r++) {
@@ -195,15 +203,19 @@ ActionValue MCSearch(const GameController& game) {
     }
     std::sort(action_list.begin(), action_list.end());
     ActionValue res;
-    for (int i = 0; i < 10 && i < action_list.size(); i++) {
-        double total_value = -1e9;
+    int width = 5;
+    if (out) {
+        width = 10;
+    }
+    for (int i = 0; i < width && i < action_list.size(); i++) {
+        double total_value = 0;
         int index = action_list.size() - 1 - i;
         Action act = action_list[index].a;
-        for (int j = 0; j < 100; j++) {
+        for (int j = 0; j < 1; j++) {
             GameController tmp_game(game);
             tmp_game.Step(act);
             tmp_game.CalcData();
-            total_value = max(total_value, MCSimulation(tmp_game, 30));
+            total_value += MCSimulation(tmp_game, 30, deepth);
         }
         if (res.v < total_value) {
             res = ActionValue(act, total_value);
@@ -224,7 +236,7 @@ int main()
         }
         //Action act = Greedy(game).a;
         //Action act = Search(game, 4, 3).a;
-        Action act = MCSearch(game).a;
+        Action act = MCSearch(game, 1, true).a;
         std::vector<std::string> act_list_tmp = game.Step(act, false);
         act_list.push_back("N");
         for (int i = act_list_tmp.size() - 1; i >= 0;) {
@@ -236,7 +248,7 @@ int main()
             }
             act_list.push_back(act_list_tmp[i + 1] + std::to_string(Count));
         }
-        printf("%d %d %lf\n", game.number_, game.score_, 1.*game.score_ * 10000 / game.number_);
+        printf("%d %d %lf %lf %lf\n", game.number_, game.score_, 1. * game.score_ * 10000 / game.number_, 1. * clock() / CLOCKS_PER_SEC, 1. * clock() / CLOCKS_PER_SEC * 10000 / game.number_);
         if (game.number_ % 1 == 0) {
             //game.DebugOutput();
         }
