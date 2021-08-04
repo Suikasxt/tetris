@@ -195,7 +195,9 @@ ActionValue MCSearch(const GameController& game, int deepth, bool out) {
                 if (game.CanStay(Action(r, j, i))) {
                     GameController tmp_game(game);
                     tmp_game.Step(Action(r, j, i));
-                    double value = Evaluate(tmp_game);
+                    tmp_game.CalcData();
+                    //double value = Evaluate(tmp_game);
+                    double value = Search(tmp_game, 3, 5).v;
                     action_list.push_back(ActionValue(Action(r, j, i), value));
                 }
             }
@@ -229,7 +231,7 @@ int main()
     GameController game;
     game.Restart();
     std::vector<std::string> act_list;
-    while (!game.game_over_ && game.number_ < 1000) {
+    while (!game.game_over_ && game.number_ < 10000) {
         game.CalcData();
         if (game.game_over_) {
             break;
