@@ -15,6 +15,7 @@ struct ActionValue {
         return v < x.v;
     }
 };
+double weight = 10;
 
 double GetBoardTransitions(const GameController& game) {
     int res = 0;
@@ -187,7 +188,6 @@ double MCEvaluate(const GameController& game) {
     }
     return res;
 }
-double weight = 10;
 double MCSimulation(GameController& game, int width, int deepth) {
     double value = game.score_;
     double addition = MCEvaluate(game);
@@ -219,6 +219,7 @@ ActionValue MCSearch(const GameController& game, int deepth, bool out) {
                 if (game.CanStay(Action(r, j, i))) {
                     GameController tmp_game(game);
                     tmp_game.Step(Action(r, j, i));
+                    tmp_game.CalcData();
                     //double value = Evaluate(tmp_game);
                     double value = Search(tmp_game, 3, 5).v;
                     action_list.push_back(ActionValue(Action(r, j, i), value));
