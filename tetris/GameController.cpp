@@ -153,10 +153,11 @@ std::vector<std::string> GameController::Step(Action act, bool is_simulation)
 		}
 	}
 
-	int pop_number = 0, block_number = 0;
+	int pop_number = 0;
+	block_number_ = 0;
 	for (int i = 0; i < Height; i++) {
 		for (int j = 0; j < Width; j++) {
-			block_number += has_blocks_[j][i];
+			block_number_ += has_blocks_[j][i];
 		}
 	}
 	for (int i = Height - 1; i >= 0;) {
@@ -181,16 +182,16 @@ std::vector<std::string> GameController::Step(Action act, bool is_simulation)
 	switch (pop_number)
 	{
 	case 1:
-		score_ += block_number * 1;
+		score_ += block_number_ * 1;
 		break;
 	case 2:
-		score_ += block_number * 3;
+		score_ += block_number_ * 3;
 		break;
 	case 3:
-		score_ += block_number * 6;
+		score_ += block_number_ * 6;
 		break;
 	case 4:
-		score_ += block_number * 10;
+		score_ += block_number_ * 10;
 		break;
 	default:
 		break;
