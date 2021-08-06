@@ -28,6 +28,7 @@ public:
 	int pop_count_[5];
 	int number_;
 	int score_;
+	int block_number_;
 	bool game_over_;
 
 	void Restart();

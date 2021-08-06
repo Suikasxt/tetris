@@ -15,6 +15,7 @@ struct ActionValue {
         return v < x.v;
     }
 };
+double weight = 10;
 
 double GetBoardTransitions(const GameController& game) {
     int res = 0;
@@ -167,8 +168,29 @@ ActionValue Search(const GameController& game, int deepth, int width) {
     return res;
 }
 ActionValue MCSearch(const GameController& game, int deepth, bool out = false);
+double MCEvaluate(const GameController& game) {
+    double res = 0;
+    for (int x = 0; x < game.Width; x++) {
+        bool flag = false;
+        for (int y = 0; y < game.Height; y++) {
+            if (game.has_blocks_[x][y]) {
+                flag = true;
+            }
+            if (flag && !game.has_blocks_[x][y]) {
+                res -= game.Height - y;
+            }
+        }
+    }
+    for (int y = 0; y < game.Height; y++) {
+        if (game.has_blocks_[0][y]) {
+            res -= game.Height - y;
+        }
+    }
+    return res;
+}
 double MCSimulation(GameController& game, int width, int deepth) {
     double value = game.score_;
+    double addition = MCEvaluate(game);
     for (int i = 0; i < width && !game.game_over_; i++) {
 
         Action act;
@@ -182,8 +204,10 @@ double MCSimulation(GameController& game, int width, int deepth) {
         game.Step(act);
         game.CalcData();
         value = value * 0.8 + game.score_;
+        addition += MCEvaluate(game) * pow(0.92, i);
     }
     //value += game.score_ * 2.5;
+    value += addition / 3;
     return value;
 }
 ActionValue MCSearch(const GameController& game, int deepth, bool out) {
@@ -225,9 +249,7 @@ ActionValue MCSearch(const GameController& game, int deepth, bool out) {
     }
     return res;
 }
-int main()
-{
-    srand(time(0));
+void work() {
     GameController game;
     game.Restart();
     std::vector<std::string> act_list;
@@ -238,7 +260,7 @@ int main()
         }
         //Action act = Greedy(game).a;
         //Action act = Search(game, 4, 3).a;
-        Action act = MCSearch(game, 1, true).a;
+        Action act = MCSearch(game, 0, true).a;
         std::vector<std::string> act_list_tmp = game.Step(act, false);
         act_list.push_back("N");
         for (int i = act_list_tmp.size() - 1; i >= 0;) {
@@ -252,9 +274,10 @@ int main()
         }
         printf("%d %d %lf %lf %lf\n", game.number_, game.score_, 1. * game.score_ * 10000 / game.number_, 1. * clock() / CLOCKS_PER_SEC, 1. * clock() / CLOCKS_PER_SEC * 10000 / game.number_);
         if (game.number_ % 1 == 0) {
-            //game.DebugOutput();
+            //game.DebugOutput(); Sleep(200);
         }
     }
+    
     std::cout << "game.pause();game.playRecord('";
     for (int i = 0; i < act_list.size(); i++) {
         std::cout << act_list[i];
@@ -263,5 +286,16 @@ int main()
         }
     }
     std::cout << "'.split(','));";
-    printf("\n%d\n", game.score_);
+    
+    printf("%d\n", game.score_);
+}
+int main()
+{
+    srand(time(0));
+    work();
+    return 0;
+    for (weight = 1; weight <= 100; weight += 1) {
+        printf("%lf ", weight);
+        work();
+    }
 }
