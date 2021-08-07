@@ -132,11 +132,17 @@ std::vector<std::string> GameController::Step(Action act, bool is_simulation)
 	if (number_ >= MAX_NUMBER) {
 		game_over_ = true;
 	}
+	int start_y = -1;
 	for (int k = 0; k < 4; k++) {
-		if (act.y + Shapes[type][act.r][k][1] >= 0) {
-			has_blocks_[act.x + Shapes[type][act.r][k][0]][act.y + Shapes[type][act.r][k][1]] = true;
+		int x = act.x + Shapes[type][act.r][k][0];
+		int y = act.y + Shapes[type][act.r][k][1];
+		if (y >= 0) {
+			has_blocks_[x][y] = true;
 		}
-		if (act.y + Shapes[type][act.r][k][1] <= 0) {
+		if (y > start_y) {
+			start_y = y;
+		}
+		if (y <= 0) {
 			game_over_ = true;
 		}
 	}
@@ -160,23 +166,30 @@ std::vector<std::string> GameController::Step(Action act, bool is_simulation)
 			block_number_ += has_blocks_[j][i];
 		}
 	}
-	for (int i = Height - 1; i >= 0;) {
+	int realpos = start_y;
+	for (int i = start_y; i >= 0; i--) {
 		bool full = true;
 		for (int j = 0; j < Width && full; j++) {
 			full &= has_blocks_[j][i];
 		}
-		if (!full) {
-			i--;
+		if (full) {
+			pop_number++;
 			continue;
 		}
-		pop_number++;
-		for (int k = i; k > 0; k--) {
+		if (i <= act.y - 2 && realpos == i) {
+			realpos = -1;
+			break;
+		}
+		if (realpos != i) {
 			for (int j = 0; j < Width; j++) {
-				has_blocks_[j][k] = has_blocks_[j][k - 1];
+				has_blocks_[j][realpos] = has_blocks_[j][i];
 			}
 		}
+		realpos--;
+	}
+	for (int i = 0; i <= realpos; i++) {
 		for (int j = 0; j < Width; j++) {
-			has_blocks_[j][0] = false;
+			has_blocks_[j][i] = false;
 		}
 	}
 	switch (pop_number)
