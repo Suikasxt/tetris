@@ -5,6 +5,7 @@
 #include "GameController.h"
 #include "windows.h"
 #include <ctime>
+#include<cassert>
 #include <algorithm>
 
 struct ActionValue {
@@ -329,7 +330,7 @@ namespace Search {
         double BoardTransitions = GetBoardTransitions(game), BuriedHoles = GetBoardBuriedHoles(game), Wells = GetBoardWells(game);
 
         res = sqrt(height_value) / 3  + 5.7 * max + 2 * BoardTransitions + 200 * BuriedHoles;
-        res -= min(blocks_number, 130) * 20.;
+        res -= min(blocks_number, 120) * 20.;
 
         return res;
     }
@@ -350,7 +351,24 @@ namespace Search {
         }
         return res;
     }
-    ActionValue Search(const GameController& game, int deepth, int width, bool out = false) {
+    ActionValue Search(const GameController& game, int deepth, int width, bool out = false);
+    typedef struct __THREAD_DATA
+    {
+        GameController game;
+        int deepth;
+        int width;
+        ActionValue& res;
+
+        __THREAD_DATA(const GameController& _game, int _deepth, int _width, ActionValue& _res) : game(_game), deepth(_deepth), width(_width), res(_res) {};
+    }THREAD_DATA;
+    DWORD WINAPI ThreadProc(LPVOID lpParameter)
+    {
+        THREAD_DATA* pThreadData = (THREAD_DATA*)lpParameter;
+        pThreadData->res = Search(pThreadData->game, pThreadData->deepth, pThreadData->width);
+        //printf("calc %d %lf\n", pThreadData->i, tmp_res[pThreadData->i].v);
+        return 0L;
+    }
+    ActionValue Search(const GameController& game, int deepth, int width, bool out) {
         if (deepth == 0 || game.game_over_) {
             return ActionValue(Action(), Evaluate(game));
         }
@@ -365,7 +383,7 @@ namespace Search {
                         double value;
                         //value = Evaluate(tmp_game);
                         
-                        if (deepth <= 6) {
+                        if (deepth < 6) {
                             value = Evaluate(tmp_game);
                         }
                         else {
@@ -386,6 +404,39 @@ namespace Search {
         int real_width = width;
         if (out) {
             real_width = 5;
+        }
+        if (deepth >= 10) {
+            HANDLE thread[100];
+            __THREAD_DATA* tmp_data[100];
+            ActionValue tmp_res[100];
+            //double maxvalue = action_list[action_list.size() - 1].v;
+            //maxvalue -= maxvalue - abs(maxvalue / 2);
+            for (int i = 0; i < real_width && i < action_list.size(); i++) {
+                int index = action_list.size() - 1 - i;
+                //if (action_list[index].v < maxvalue) continue;
+                GameController tmp_game(game);
+                Action act = action_list[index].a;
+                tmp_game.Step(act);
+                tmp_game.CalcData();
+                tmp_data[i] = new __THREAD_DATA(tmp_game, deepth - 1, width, tmp_res[i]);
+                thread[i] = CreateThread(NULL, 0, ThreadProc, tmp_data[i], 0, NULL);
+                //printf("ask %d\n", i);
+            }
+            for (int i = 0; i < real_width && i < action_list.size(); i++) {
+                int index = action_list.size() - 1 - i;
+                //if (action_list[index].v < maxvalue) continue;
+                Action act = action_list[index].a;
+                WaitForSingleObject(thread[i], INFINITE);
+                delete tmp_data[i];
+                ActionValue av = tmp_res[i];
+                //printf("get %d %lf\n", i, av.v);
+                av.a = act;
+                av.v = action_list[index].v + av.v * 2;
+                if (res < av) {
+                    res = av;
+                }
+            }
+            return res;
         }
         for (int i = 0; i < real_width && i < action_list.size(); i++) {
             int index = action_list.size() - 1 - i;
@@ -413,7 +464,9 @@ void work() {
             break;
         }
         //Action act = Greedy(game).a;
-        Action act = Search::Search(game, 11, 3, true).a;
+        //Action act = Search::Search(game, game.number_<100?11:11, 3, true).a;
+        //Action act = Search::Search(game, game.number_ < 100 ? 11 : 13, 3, true).a;
+        Action act = Search::Search(game, game.number_ < 100 ? 11 : 13, 3, true).a;
         //Action act = MCTS::MCSearch(game, 0, true).a;
         std::vector<std::string> act_list_tmp = game.Step(act, false);
         act_list.push_back("N");
@@ -431,7 +484,7 @@ void work() {
             game.DebugOutput(); //Sleep(50);
         }
     }
-    /*
+    
     std::cout << "game.pause();game.playRecord('";
     for (int i = 0; i < act_list.size(); i++) {
         std::cout << act_list[i];
@@ -440,7 +493,7 @@ void work() {
         }
     }
     std::cout << "'.split(','));";
-    */
+    
     printf("%d\n", game.score_);
 }
 int main()
